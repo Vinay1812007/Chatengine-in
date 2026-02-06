@@ -36,6 +36,7 @@ export const ChatProvider = ({ children }) => {
   const [messages, setMessages] = useState([]);
 
   useEffect(() => {
+    if (!user || !db) return undefined;
     if (!user) return undefined;
     const chatsQ = query(collection(db, 'chats'), where('memberIds', 'array-contains', user.uid));
     const unsub = onSnapshot(chatsQ, (snap) => {
@@ -48,6 +49,7 @@ export const ChatProvider = ({ children }) => {
   }, [user, activeChatId]);
 
   useEffect(() => {
+    if (!activeChatId || !db) return undefined;
     if (!activeChatId) return undefined;
     const msgsQ = query(collection(db, 'chats', activeChatId, 'messages'), orderBy('createdAt', 'asc'));
     const unsub = onSnapshot(msgsQ, (snap) => {
@@ -57,6 +59,7 @@ export const ChatProvider = ({ children }) => {
   }, [activeChatId]);
 
   const startDirectChat = async (targetUser) => {
+    if (!user || !targetUser?.uid || !db) return;
     if (!user || !targetUser?.uid) return;
     const chatId = makeChatId(user.uid, targetUser.uid);
     const chatRef = doc(db, 'chats', chatId);
@@ -83,6 +86,7 @@ export const ChatProvider = ({ children }) => {
   };
 
   const createGroup = async (title, members) => {
+    if (!user || !db) return;
     if (!user) return;
     const chatRef = doc(collection(db, 'chats'));
     const memberIds = [...new Set([user.uid, ...members.map((m) => m.uid)])];
@@ -103,6 +107,17 @@ export const ChatProvider = ({ children }) => {
   };
 
   const updateTyping = async (value) => {
+    if (!activeChatId || !user || !db) return;
+    await updateDoc(doc(db, 'chats', activeChatId), { [`typing.${user.uid}`]: value, updatedAt: serverTimestamp() }).catch(() => null);
+  };
+
+  const updateDraft = async (value) => {
+    if (!activeChatId || !user || !db) return;
+    await updateDoc(doc(db, 'chats', activeChatId), { [`draftByUser.${user.uid}`]: value, updatedAt: serverTimestamp() }).catch(() => null);
+  };
+
+  const sendMessage = async ({ text, media = null, replyToId = '', poll = null }) => {
+    if (!activeChatId || !user || !db) return null;
     if (!activeChatId || !user) return;
     await updateDoc(doc(db, 'chats', activeChatId), {
       [`typing.${user.uid}`]: value,
@@ -147,6 +162,10 @@ export const ChatProvider = ({ children }) => {
     return newDoc.id;
   };
 
+  const editMessage = async (messageId, text) => db && updateDoc(doc(db, 'chats', activeChatId, 'messages', messageId), { text, editedAt: serverTimestamp() });
+
+  const deleteMessage = async (messageId, forEveryone) => {
+    if (!db || !user) return;
   const editMessage = async (messageId, text) => updateDoc(doc(db, 'chats', activeChatId, 'messages', messageId), { text, editedAt: serverTimestamp() });
 
   const deleteMessage = async (messageId, forEveryone) => {
@@ -155,6 +174,15 @@ export const ChatProvider = ({ children }) => {
     return updateDoc(msgRef, { deletedFor: arrayUnion(user.uid) });
   };
 
+  const toggleStar = async (messageId, starred) => db && user && updateDoc(doc(db, 'chats', activeChatId, 'messages', messageId), {
+    starredBy: starred ? arrayRemove(user.uid) : arrayUnion(user.uid)
+  });
+
+  const reactToMessage = async (messageId, emoji) => db && user && updateDoc(doc(db, 'chats', activeChatId, 'messages', messageId), { [`reactions.${user.uid}`]: emoji });
+
+  const pinMessage = async (messageId) => db && updateDoc(doc(db, 'chats', activeChatId), { pinnedMessageId: messageId || '', updatedAt: serverTimestamp() });
+  const clearPin = async () => db && updateDoc(doc(db, 'chats', activeChatId), { pinnedMessageId: '', updatedAt: serverTimestamp() });
+  const votePoll = async (messageId, optionIndex) => db && user && updateDoc(doc(db, 'chats', activeChatId, 'messages', messageId), {
   const toggleStar = async (messageId, starred) => updateDoc(doc(db, 'chats', activeChatId, 'messages', messageId), {
     starredBy: starred ? arrayRemove(user.uid) : arrayUnion(user.uid)
   });
@@ -180,6 +208,7 @@ export const ChatProvider = ({ children }) => {
   });
 
   const forwardMessage = async (message, targetChatId) => {
+    if (!db || !user) return;
     await addDoc(collection(db, 'chats', targetChatId, 'messages'), {
       ...message,
       forwardedFrom: activeChatId,
@@ -190,12 +219,17 @@ export const ChatProvider = ({ children }) => {
   };
 
   const markRead = async (messageId) => {
+    if (!user || !activeChatId || !db) return;
     if (!user || !activeChatId) return;
     await updateDoc(doc(db, 'chats', activeChatId, 'messages', messageId), { readBy: arrayUnion(user.uid) }).catch(() => null);
   };
 
   const uploadMedia = (file, onProgress) =>
     new Promise((resolve, reject) => {
+      if (!storage || !activeChatId) {
+        reject(new Error('Storage not configured'));
+        return;
+      }
       const mediaType = file.type.startsWith('image') ? 'image' : file.type.startsWith('video') ? 'video' : 'file';
       const path = `uploads/chats/${activeChatId}/${mediaType}/${Date.now()}_${file.name}`;
       const uploadTask = uploadBytesResumable(ref(storage, path), file);
@@ -213,6 +247,11 @@ export const ChatProvider = ({ children }) => {
       );
     });
 
+  const blockUser = async (targetUid) => db && user && updateDoc(doc(db, 'users', user.uid), { blockedUsers: arrayUnion(targetUid) });
+  const unblockUser = async (targetUid) => db && user && updateDoc(doc(db, 'users', user.uid), { blockedUsers: arrayRemove(targetUid) });
+
+  const findUsersByUsername = async (username) => {
+    if (!db) return [];
   const blockUser = async (targetUid) => user && updateDoc(doc(db, 'users', user.uid), { blockedUsers: arrayUnion(targetUid) });
   const unblockUser = async (targetUid) => user && updateDoc(doc(db, 'users', user.uid), { blockedUsers: arrayRemove(targetUid) });
 

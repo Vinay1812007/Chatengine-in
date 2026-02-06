@@ -28,6 +28,7 @@ Production-ready **Next.js Pages Router** messaging app inspired by WhatsApp + T
 - Media upload to Firebase Storage with progress/status feedback
 - Block/unblock controls
 - WebRTC call UI scaffold (ringing/active/end) using Firestore signaling
+- Build-safe Firebase bootstrapping: app no longer crashes during Vercel build when `NEXT_PUBLIC_FIREBASE_*` variables are missing; UI shows a setup prompt instead.
 
 ## Free-tier-safe limitations (documented approximations)
 - No TURN server is used; calls may fail behind strict NAT/firewall.

@@ -7,15 +7,18 @@ import CallUI from '../components/CallUI';
 import GlassPanel from '../components/GlassPanel';
 import { useAuth } from '../contexts/AuthContext';
 import { useChat } from '../contexts/ChatContext';
+import { db, hasFirebaseConfig } from '../lib/firebase';
 import { db } from '../lib/firebase';
 import styles from '../styles/chat.module.css';
 
 export default function HomePage() {
   const { user, loading, loginWithGoogle, logout } = useAuth();
+  const [authError, setAuthError] = useState('');
   const { startDirectChat } = useChat();
   const [users, setUsers] = useState([]);
 
   useEffect(() => {
+    if (!user || !db) return undefined;
     if (!user) return undefined;
     const unsub = onSnapshot(collection(db, 'users'), (snap) => {
       setUsers(snap.docs.map((d) => d.data()).filter((u) => u.uid !== user.uid));
@@ -33,6 +36,9 @@ export default function HomePage() {
         <GlassPanel className={styles.loginCard}>
           <h1>Chatengine In</h1>
           <p>Secure cloud messaging with premium glass UI.</p>
+          {!hasFirebaseConfig ? <p>Add NEXT_PUBLIC_FIREBASE_* variables to enable auth.</p> : null}
+          {authError ? <p>{authError}</p> : null}
+          <button onClick={async () => { try { setAuthError(''); await loginWithGoogle(); } catch (error) { setAuthError(error.message); } }} disabled={!hasFirebaseConfig}>Continue with Google</button>
           <button onClick={loginWithGoogle}>Continue with Google</button>
         </GlassPanel>
       </main>

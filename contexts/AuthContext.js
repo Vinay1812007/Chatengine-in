@@ -18,6 +18,7 @@ import {
   setDoc,
   updateDoc
 } from 'firebase/firestore';
+import { auth, db, provider, hasFirebaseConfig } from '../lib/firebase';
 import { auth, db, provider } from '../lib/firebase';
 
 const AuthContext = createContext(null);
@@ -27,6 +28,7 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   const syncUserDoc = useCallback(async (authUser) => {
+    if (!db) return;
     const userRef = doc(db, 'users', authUser.uid);
     const existing = await getDoc(userRef);
     const usernameSeed = (authUser.displayName || authUser.email?.split('@')[0] || 'user')
@@ -61,6 +63,13 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   useEffect(() => {
+    if (!auth || !db) {
+      setLoading(false);
+      return undefined;
+    }
+
+    const unsub = onAuthStateChanged(auth, async (authUser) => {
+      if (authUser) await syncUserDoc(authUser);
     const unsub = onAuthStateChanged(auth, async (authUser) => {
       if (authUser) {
         await syncUserDoc(authUser);
@@ -84,6 +93,13 @@ export const AuthProvider = ({ children }) => {
     };
   }, [syncUserDoc]);
 
+  const loginWithGoogle = async () => {
+    if (!auth || !provider) throw new Error('Firebase config missing. Add NEXT_PUBLIC_FIREBASE_* variables.');
+    return signInWithPopup(auth, provider);
+  };
+
+  const logout = async () => {
+    if (!auth || !db) return;
   const loginWithGoogle = async () => signInWithPopup(auth, provider);
 
   const logout = async () => {
@@ -101,6 +117,8 @@ export const AuthProvider = ({ children }) => {
       user,
       loading,
       loginWithGoogle,
+      logout,
+      hasFirebaseConfig
       logout
     }),
     [user, loading]
