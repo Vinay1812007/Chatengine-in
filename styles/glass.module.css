@@ -1,0 +1,14 @@
+.glassPanel {
+  background: linear-gradient(145deg, rgba(255,255,255,0.18), rgba(255,255,255,0.06));
+  border: 1px solid rgba(255,255,255,0.28);
+  box-shadow: 0 14px 40px rgba(3, 8, 20, 0.42), inset 0 1px 0 rgba(255,255,255,0.3);
+  backdrop-filter: blur(18px) saturate(150%);
+  -webkit-backdrop-filter: blur(18px) saturate(150%);
+  border-radius: 22px;
+}
+
+@supports not ((backdrop-filter: blur(1px))) {
+  .glassPanel {
+    background: rgba(25, 34, 61, 0.9);
+  }
+}
