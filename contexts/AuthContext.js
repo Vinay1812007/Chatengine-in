@@ -19,6 +19,7 @@ import {
   updateDoc
 } from 'firebase/firestore';
 import { auth, db, provider, hasFirebaseConfig } from '../lib/firebase';
+import { auth, db, provider } from '../lib/firebase';
 
 const AuthContext = createContext(null);
 
@@ -69,6 +70,10 @@ export const AuthProvider = ({ children }) => {
 
     const unsub = onAuthStateChanged(auth, async (authUser) => {
       if (authUser) await syncUserDoc(authUser);
+    const unsub = onAuthStateChanged(auth, async (authUser) => {
+      if (authUser) {
+        await syncUserDoc(authUser);
+      }
       setUser(authUser);
       setLoading(false);
     });
@@ -95,6 +100,9 @@ export const AuthProvider = ({ children }) => {
 
   const logout = async () => {
     if (!auth || !db) return;
+  const loginWithGoogle = async () => signInWithPopup(auth, provider);
+
+  const logout = async () => {
     if (auth.currentUser) {
       await updateDoc(doc(db, 'users', auth.currentUser.uid), {
         online: false,
@@ -111,6 +119,7 @@ export const AuthProvider = ({ children }) => {
       loginWithGoogle,
       logout,
       hasFirebaseConfig
+      logout
     }),
     [user, loading]
   );

@@ -19,6 +19,7 @@ export default function SettingsPage() {
 
   const save = async () => {
     if (!user || !db) return;
+    if (!user) return;
     setStatus('Checking username...');
     const username = form.username.toLowerCase();
     const q = query(collection(db, 'users'), where('username', '==', username));
